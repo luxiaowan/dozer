@@ -367,8 +367,53 @@ public final class ConstructionStrategies {
             }
             return null;
         }
-
+        
         private static <T> T newInstance(Class<T> clazz) {
+            Constructor<T> constructor = null;
+
+            T result = null;
+            try {
+                List<Class> objs = new ArrayList<>();
+                objs.add(clazz);
+                while (clazz.isMemberClass()) {
+                    clazz = (Class<T>) clazz.getEnclosingClass();
+                    objs.add(clazz);
+                }
+                if (objs.size() == 1) {
+                    result = clazz.getConstructor(null).newInstance(null);
+                }
+                for (int i = objs.size() - 2; i >= 0; i--) {
+                    clazz = objs.get(i + 1);
+                    constructor = objs.get(i).getDeclaredConstructor(new Class[] { clazz });
+                    if (constructor == null) {
+                        MappingUtils.throwMappingException("Could not create a new instance of the dest object: "
+                                + clazz + ".  Could not find a no-arg constructor for this class.");
+                    }
+                    if (!constructor.isAccessible()) {
+                        constructor.setAccessible(true);
+                    }
+                    result = constructor.newInstance(result);
+                }
+
+            } catch (SecurityException e) {
+                MappingUtils.throwMappingException(e);
+            } catch (NoSuchMethodException e) {
+                MappingUtils.throwMappingException(e);
+            } catch (IllegalArgumentException e) {
+                MappingUtils.throwMappingException(e);
+            } catch (InstantiationException e) {
+                MappingUtils.throwMappingException(e);
+            } catch (IllegalAccessException e) {
+                MappingUtils.throwMappingException(e);
+            } catch (InvocationTargetException e) {
+                MappingUtils.throwMappingException(e);
+            }
+
+            return result;
+        }
+
+        @Deprecated
+        private static <T> T newInstanceDeprecated(Class<T> clazz) {
             //Create using public or private no-arg constructor
             Constructor<T> constructor = null;
             try {
